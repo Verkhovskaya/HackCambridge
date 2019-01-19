@@ -4,12 +4,13 @@ from azure_translate_api import translate
 import serial
 import sys
 import time
+import os
+
 
 import serial.tools.list_ports
 
-language_code = {
+azure_language_code = {
     "Afrikaans": "af",
-    "Bulgarian": "bg",
     "Cantonese": "yue",
     "Catalan": "ca",
     "Croatian": "hr",
@@ -17,7 +18,6 @@ language_code = {
     "Danish": "da",
     "Dutch": "nl",
     "English": "en",
-    "Estonian": "et",
     "Finnish": "fi",
     "French": "fr",
     "German": "de",
@@ -28,15 +28,48 @@ language_code = {
     "Indonesian": "id",
     "Italian": "it",
     "Latvian": "lv",
-    "Lithuanian": "lt",
     "Mandarin": "zh-Hans", #  simplified
-    "Nepalese": "ne",
     "Norwegian": "no",
     "Polish": "pl",
     "Portuguese": "pt",
     "Romanian": "ro",
     "Russian": "ru",
     "Serbian": "sr-Latn", #  latin
+    "Slovak": "sk",
+    "Spanish": "es",
+    "Swedish": "sv",
+    "Tamil": "ta",
+    "Turkish": "tr",
+    "Vietnamese": "vi",
+    "Welsh": "cy"
+}
+
+tts_language_code = {
+    "Afrikaans": "af",
+    "Cantonese": "zh-yue",
+    "Catalan": "ca",
+    "Croatian": "hr",
+    "Czech": "cs",
+    "Danish": "da",
+    "Dutch": "nl",
+    "English": "en",
+    "Finnish": "fi",
+    "French": "fr",
+    "German": "de",
+    "Greek": "el",
+    "Hindi": "hi",
+    "Hungarian": "hi",
+    "Icelandic": "is",
+    "Indonesian": "id",
+    "Italian": "it",
+    "Latvian": "lv",
+    "Mandarin": "zh", #  simplified
+    "Norwegian": "no",
+    "Polish": "pl",
+    "Portuguese": "pt",
+    "Romanian": "ro",
+    "Russian": "ru",
+    "Serbian": "sr", #  latin
     "Slovak": "sk",
     "Spanish": "es",
     "Swedish": "sv",
@@ -79,6 +112,8 @@ def get_modem_port():
             return port
 
 def text_to_speech(sentence):
+    language_code = tts_language_code[language]
+    os.system('speak -v' + language_code + '"' + sentence + '"')
     pass
 
 
@@ -162,7 +197,6 @@ class GloveInterface:
             self.received_sentence += " " + self.word_options[self.chosen_word_id]
             self.state = "exiting_pick_word"
             print()
-            print("Current sentence: " + self.received_sentence )
 
     def release_thumb(self):
         if debug:
@@ -179,26 +213,33 @@ class GloveInterface:
                 print()
                 print("Received sentence: " + self.received_sentence)
                 if self.received_sentence:
-                    print("Translated sentence: " + translate(self.received_sentence, language_code[language]))
-                    text_to_speech(self.received_sentence)
+                    translated = translate(self.received_sentence, azure_language_code[language])
+                    print("Translated sentence: " + translated)
+                    text_to_speech(translated)
                 self.received_sentence = ""
             elif self.thumbPressedAlone:
-                chosen = str(0)
-                word = self.word_options[0]
-                word_padding = " "*(10-len(self.received_word))
-                options_text = " , ".join(self.word_options[:5])
-                options_text_padding = " "*(50-len(str(options_text)))
-                print(">> chosen {4}: {0} {1}        -> {2} {3}".format(word, word_padding, options_text,
-                                                                        options_text_padding, chosen), end="\r")
-                sys.stdout.flush()
-                self.word_options = match_to_typed(self.received_word)
-                self.chosen_word_id = 0
-                if self.word_options:
-                    self.state = "pick_word"
-                else:
+                if not self.word_options:
                     print("No word found matching. Please try again")
-                self.received_word = ""
-                self.lastCharacterWasSpace = True
+                    self.received_word = ""
+                    self.lastCharacterWasSpace = True
+                else:
+
+                    chosen = str(0)
+                    word = self.word_options[0]
+                    word_padding = " "*(10-len(self.received_word))
+                    options_text = " , ".join(self.word_options[:5])
+                    options_text_padding = " "*(50-len(str(options_text)))
+                    print(">> chosen {4}: {0} {1}        -> {2} {3}".format(word, word_padding, options_text,
+                                                                            options_text_padding, chosen), end="\r")
+                    sys.stdout.flush()
+                    self.word_options = match_to_typed(self.received_word)
+                    self.chosen_word_id = 0
+                    if self.word_options:
+                        self.state = "pick_word"
+                    else:
+                        print("No word found matching. Please try again")
+                    self.received_word = ""
+                    self.lastCharacterWasSpace = True
         elif self.state == "exiting_pick_word":
             self.state = "receiving_characters"
 
@@ -235,6 +276,7 @@ class GloveInterface:
                 print("Forgetting word. Enter a new one")
                 print(" "*100)
                 self.received_word = ""
+                self.word_options = []
                 self.state = "receiving_characters"
             if self.state != "receiving_characters":
                 word = self.word_options[self.chosen_word_id]
@@ -272,6 +314,9 @@ glove = GloveInterface()
 
 if use_glove:
     while True:
+        if not ser.isOpen():
+            print("WTFFFF?")
+            raise Exception("FUCK THIS SERIAL PORT")
         serial_line = ser.readline().rstrip()
         if debug:
             print(serial_line)
