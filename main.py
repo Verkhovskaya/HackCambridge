@@ -5,6 +5,9 @@ import serial
 import sys
 import time
 import os
+import io
+reload(sys)
+sys.setdefaultencoding('utf8')
 
 
 import serial.tools.list_ports
@@ -80,7 +83,7 @@ tts_language_code = {
 }
 
 #  Tested languages: "no",
-language = "Norwegian"
+language = "Mandarin"
 use_glove = True
 debug = False
 
@@ -103,17 +106,17 @@ word_order = {}
 def get_modem_port():
     ports = list(serial.tools.list_ports.comports())
     for p in ports:
-        print(p)
         if "ARDUINO" in str(p):
-            print("PORT")
             port = str(p).split(" ")[0]
-            print(p)
-            print(port)
             return port
 
 def text_to_speech(sentence):
     language_code = tts_language_code[language]
-    os.system('speak -v' + language_code + '"' + sentence + '"')
+    tts_file = open("tts.txt", "w")
+    tts_file.write(sentence.encode('utf-8'))
+    tts_file.close()
+    print('speak -v' + language_code + ' -ftts.txt')
+    os.system('speak -v' + language_code + ' "' + sentence + '"')
     pass
 
 
@@ -149,7 +152,6 @@ def load_all_words():
     words_file = open("words.txt")
     words = words_file.read().split("\n")[:5000]
     sorted_words = [] # [x.split("\t")[0].lower() for x in words]
-    print("hello" in words)
     words_file.close()
     words_2_file = open("words_2.txt")
     words_2 = [] #  words_2_file.read().split("\n")
@@ -298,21 +300,22 @@ class GloveInterface:
             pass
 
 
-port = get_modem_port()
-print(port)
-if not port:
-    raise Exception("Device is being flaky again :(")
-print("OPENING SERIAL PORT")
-
-ser = serial.Serial(port, 9600)  # open serial port
-print(ser.name)  # check which port was really used
-print("HELLO")
-print(ser.isOpen())
-print("STARTING PROGRAM")
 
 glove = GloveInterface()
 
 if use_glove:
+    port = get_modem_port()
+    if debug:
+        print(port)
+    if not port:
+        raise Exception("Device is being flaky again :(")
+
+    ser = serial.Serial(port, 9600)  # open serial port
+    if debug:
+        print(ser.name)  # check which port was really used
+        print("HELLO")
+        print(ser.isOpen())
+        print("STARTING PROGRAM")
     while True:
         if not ser.isOpen():
             print("WTFFFF?")
@@ -337,6 +340,7 @@ if use_glove:
                 glove.release_finger(finger)
 
 else:
+
     current_state = [False, False, False, False, False]
     while True:
         new_char = readchar.readchar()

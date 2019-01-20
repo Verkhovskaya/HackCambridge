@@ -22,5 +22,3 @@ def translate(sentence, language_code):
     response = request.json()
 
     return response[0]["translations"][0]["text"]
-
-print(translate("hello world", "no"))
