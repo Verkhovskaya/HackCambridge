@@ -7,6 +7,7 @@ import time
 import os
 import io
 reload(sys)
+import time
 sys.setdefaultencoding('utf8')
 
 
@@ -83,7 +84,7 @@ tts_language_code = {
 }
 
 #  Tested languages: "no",
-language = "Mandarin"
+language = "Norwegian"
 use_glove = True
 debug = False
 
@@ -185,6 +186,7 @@ class GloveInterface:
         self.lastCharacterWasSpace = False
         self.word_options = []
         self.chosen_word_id = 0
+        self.startTime = 0
 
     def press_thumb(self):
         if debug:
@@ -192,7 +194,7 @@ class GloveInterface:
             print("Press thumb")
             print("state: " + self.state)
             print()
-
+        self.startTime = time.time()
         self.isThumbPressed = True
         self.thumbPressedAlone = True
         if self.state == "pick_word":
@@ -210,6 +212,16 @@ class GloveInterface:
             print()
 
         self.isThumbPressed = False
+
+        if (time.time() - self.startTime) > 1 and self.thumbPressedAlone:
+            self.received_word = ""
+            self.word_options = []
+            self.state = "receiving_characters"
+            self.lastCharacterWasSpace = False
+            print()
+            print("Clearing. Try again")
+            return
+
         if self.state == "receiving_characters":
             if self.lastCharacterWasSpace:
                 print()
